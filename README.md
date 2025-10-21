@@ -20,6 +20,3 @@ Ce projet, réalisé dans le cadre du module *Conduite de Projet*, a pour object
 - `/Backlog` : User stories et priorités  
 - `/Sprints` : Rapports et tâches par sprint  
 - `/Documentation` : Cahier des charges et diagrammes  
-
-## Lien Slack
-➡️ [Canal d’équipe Slack](#)
