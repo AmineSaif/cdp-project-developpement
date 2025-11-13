@@ -1,8 +1,9 @@
 # Projet – Outil de Gestion de Production Logicielle
 
 ## Équipe
-- **Saif Amine** — Développeur Full-Stack / Backend / Base de données  
-- **Ameziane Adnane** — Développeur Full-Stack / Frontend / UI/UX  
+- **Saif Amine** — Développeur Full-Stack 
+- **Ameziane Adnane** — Développeur Full-Stack 
+- **Chelh Monir** — Développeur Full-Stack
 
 ## Description
 Ce projet, réalisé dans le cadre du module *Conduite de Projet*, a pour objectif de concevoir un outil complet de gestion de la production logicielle (issues, tâches, releases, tests, documentation).
