@@ -1,5 +1,6 @@
 import React from 'react'
 import { setToken as setApiToken } from '../services/api'
+import API from '../services/api'
 
 const AuthContext = React.createContext(null)
 
@@ -24,16 +25,17 @@ export function AuthProvider({ children }) {
         return
       }
       try {
-        const API = require('../services/api').default
         const res = await API.get('/api/auth/me')
-        if (mounted) setUser(res.data.user)
+        if (mounted) setUser(res.data)
       } catch (err) {
+        console.error('Error fetching user:', err)
         if (mounted) {
           setUser(null)
           // If token is invalid (401), clear it
           if (err.response && err.response.status === 401) {
             console.log('Token invalide, nettoyage automatique')
             setTokenState(null)
+            try { localStorage.removeItem('token') } catch (e) {}
           }
         }
       }
@@ -44,15 +46,17 @@ export function AuthProvider({ children }) {
 
   function login(newToken) {
     setTokenState(newToken)
+    try { localStorage.setItem('token', newToken) } catch (e) {}
   }
 
   function logout() {
     setTokenState(null)
     setUser(null)
+    try { localStorage.removeItem('token') } catch (e) {}
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ token, user, setUser, login, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   )

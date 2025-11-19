@@ -27,10 +27,16 @@ export default function Board() {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [myIssuesOnly, setMyIssuesOnly] = useState(false)
 
   useEffect(() => {
-    API.get('/api/issues').then(res => setIssues(res.data)).catch(err => { console.error(err); setError('Failed to load issues') })
-  }, [])
+    fetchIssues()
+  }, [myIssuesOnly])
+
+  function fetchIssues() {
+    const url = myIssuesOnly ? '/api/issues?myIssuesOnly=true' : '/api/issues'
+    API.get(url).then(res => setIssues(res.data)).catch(err => { console.error(err); setError('Failed to load issues') })
+  }
 
   function grouped() {
     const map = { todo: [], inprogress: [], inreview: [], done: [] }
@@ -80,8 +86,14 @@ export default function Board() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Board</h2>
         <div className="flex gap-2">
+          <button 
+            className={`btn ${myIssuesOnly ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setMyIssuesOnly(!myIssuesOnly)}
+          >
+            {myIssuesOnly ? '✅ Mes issues' : '👥 Toutes les issues'}
+          </button>
           <button className="btn" onClick={() => setShowCreateModal(true)}>+ New Issue</button>
-          <button className="btn btn-outline" onClick={() => { setError(null); API.get('/api/issues').then(res => setIssues(res.data)).catch(err => setError('Failed to load issues')) }}>Refresh</button>
+          <button className="btn btn-outline" onClick={() => { setError(null); fetchIssues() }}>Refresh</button>
         </div>
       </div>
 
@@ -112,6 +124,7 @@ export default function Board() {
                     <div className="text-sm">{i.type || ''}</div>
                     <div className="text-sm">#{i.id}</div>
                   </div>
+                  <div className={`issue-priority-bar priority-${(i.priority || 'low').toLowerCase()}`}></div>
                 </div>
               ))}
             </div>

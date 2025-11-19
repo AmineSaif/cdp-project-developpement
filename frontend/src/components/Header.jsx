@@ -1,12 +1,18 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { UserCircleIcon, Squares2X2Icon, ChevronDownIcon } from '@heroicons/react/24/solid'
+import { UserCircleIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 
 export default function Header() {
   const nav = useNavigate()
   const auth = useAuth()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  // Debug: voir ce que contient auth.user
+  React.useEffect(() => {
+    console.log('Header - auth.user:', auth.user)
+  }, [auth.user])
 
   function logout() {
     auth.logout()
@@ -36,9 +42,7 @@ export default function Header() {
                   className="user-box"
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                 >
-                  <div className="avatar">
-                    {auth.user?.name ? auth.user.name.split(' ').map(n => n[0]).slice(0,2).join('') : <UserCircleIcon className="avatar-icon" />}
-                  </div>
+                  <UserCircleIcon className="user-icon" />
                   <div className="user-meta">
                     <div className="user-name">{auth.user?.name || auth.user?.email}</div>
                     <div className="user-role">{auth.user?.role || ''}</div>

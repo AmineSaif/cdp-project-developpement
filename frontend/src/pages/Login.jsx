@@ -25,21 +25,21 @@ export default function Login({ onSuccess }) {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-10">
-      <Card>
+    <div className="max-w-md mx-auto mt-10 px-4">
+      <Card className="auth-card">
         <h2 className="text-xl font-semibold mb-3">Login</h2>
         {error && <div className="text-red-600 mb-2">{error}</div>}
         <form onSubmit={submit} className="space-y-3">
-          <div>
+          <div className='margin-top-1'>
             <label className="block text-sm text-slate-700">Email</label>
-            <input className="w-full mt-1 p-2 border rounded" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+            <input className="form-input" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          </div>
+          <div className='margin-top-1'>
+            <label className="block text-sm text-slate-700">Password</label>
+            <input className="form-input" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           </div>
           <div>
-            <label className="block text-sm text-slate-700">Password</label>
-            <input className="w-full mt-1 p-2 border rounded" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit">Login</Button>
+            <Button type="submit" className="w-full margin-top-1">Login</Button>
           </div>
         </form>
       </Card>

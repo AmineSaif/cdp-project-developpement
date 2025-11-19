@@ -7,12 +7,25 @@ export default function IssueModal({ issueId, onClose, onSaved, onDeleted }) {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState(null)
+  const [teamMembers, setTeamMembers] = useState([])
 
   useEffect(() => {
     if (!issueId) return
     setLoading(true)
     API.get(`/api/issues/${issueId}`).then(res => setIssue(res.data)).catch(err => setError('Failed to load')).finally(() => setLoading(false))
+    
+    // Charger les membres de l'équipe pour l'assignation
+    fetchTeamMembers()
   }, [issueId])
+
+  async function fetchTeamMembers() {
+    try {
+      const res = await API.get('/api/teams/members')
+      setTeamMembers(res.data.members || [])
+    } catch (err) {
+      console.error('Failed to fetch team members:', err)
+    }
+  }
 
   if (!issueId) return null
 
@@ -23,7 +36,14 @@ export default function IssueModal({ issueId, onClose, onSaved, onDeleted }) {
   async function save() {
     setSaving(true)
     try {
-      const res = await API.patch(`/api/issues/${issueId}`, { title: issue.title, description: issue.description, status: issue.status, type: issue.type, priority: issue.priority })
+      const res = await API.patch(`/api/issues/${issueId}`, { 
+        title: issue.title, 
+        description: issue.description, 
+        status: issue.status, 
+        type: issue.type, 
+        priority: issue.priority,
+        assigneeId: issue.assigneeId || null
+      })
       onSaved && onSaved(res.data)
       onClose && onClose()
     } catch (err) {
@@ -80,6 +100,28 @@ export default function IssueModal({ issueId, onClose, onSaved, onDeleted }) {
                   <option value="critical">Critical</option>
                 </select>
               </div>
+            </div>
+
+            {/* Assignation */}
+            <div className="mt-3">
+              <label className="block text-sm">Assigné à</label>
+              <select 
+                className="w-full mt-1 p-2 border rounded" 
+                value={issue.assigneeId || ''} 
+                onChange={e => change('assigneeId', e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Non assigné</option>
+                {teamMembers.map(member => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} ({member.email})
+                  </option>
+                ))}
+              </select>
+              {issue.assignee && (
+                <div className="mt-2 text-sm text-slate-600">
+                  👤 Actuellement assigné à : <strong>{issue.assignee.name}</strong>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between mt-4">

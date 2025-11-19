@@ -1,10 +1,24 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import API from '../services/api'
 
 export default function CreateIssueModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ title: '', description: '', type: 'task', priority: 'low' })
+  const [form, setForm] = useState({ title: '', description: '', type: 'task', priority: 'low', assigneeId: null })
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [teamMembers, setTeamMembers] = useState([])
+
+  useEffect(() => {
+    fetchTeamMembers()
+  }, [])
+
+  async function fetchTeamMembers() {
+    try {
+      const res = await API.get('/api/teams/members')
+      setTeamMembers(res.data.members || [])
+    } catch (err) {
+      console.error('Failed to fetch team members:', err)
+    }
+  }
 
   function change(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -61,6 +75,25 @@ export default function CreateIssueModal({ onClose, onCreated }) {
               </select>
             </div>
           </div>
+
+          {/* Assignation à un membre de l'équipe */}
+          {teamMembers.length > 0 && (
+            <div className="mt-3">
+              <label className="block text-sm">Assigner à</label>
+              <select 
+                className="w-full mt-1 p-2 border rounded" 
+                value={form.assigneeId || ''} 
+                onChange={e => change('assigneeId', e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Non assigné</option>
+                {teamMembers.map(member => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} ({member.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="mt-4 flex justify-end gap-2">
             <button className="btn btn-outline" onClick={onClose}>Cancel</button>

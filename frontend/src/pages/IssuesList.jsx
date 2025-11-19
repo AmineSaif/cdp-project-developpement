@@ -7,16 +7,30 @@ import IssueModal from '../components/IssueModal'
 export default function IssuesList() {
   const [issues, setIssues] = useState([])
   const [selected, setSelected] = useState(null)
+  const [myIssuesOnly, setMyIssuesOnly] = useState(false)
 
   useEffect(() => {
-    API.get('/api/issues').then(res => setIssues(res.data)).catch(console.error)
-  }, [])
+    fetchIssues()
+  }, [myIssuesOnly])
+
+  function fetchIssues() {
+    const url = myIssuesOnly ? '/api/issues?myIssuesOnly=true' : '/api/issues'
+    API.get(url).then(res => setIssues(res.data)).catch(console.error)
+  }
 
   return (
     <div className="max-w-5xl mx-auto mt-8 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Issues</h2>
-        <Link to="/create" className="text-indigo-600 hover:underline">+ New Issue</Link>
+        <div className="flex gap-2">
+          <button 
+            className={`btn ${myIssuesOnly ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setMyIssuesOnly(!myIssuesOnly)}
+          >
+            {myIssuesOnly ? '✅ Mes issues' : '👥 Toutes les issues'}
+          </button>
+          <Link to="/create" className="text-indigo-600 hover:underline">+ New Issue</Link>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {issues.map(i => (

@@ -29,8 +29,10 @@ export default function Landing() {
                 <button className={"tab " + (tab === 'login' ? 'tab--active' : '')} onClick={() => setTab('login')}>Login</button>
                 <button className={"tab " + (tab === 'register' ? 'tab--active' : '')} onClick={() => setTab('register')}>Register</button>
               </div>
-              <div className="tab-panel">
-                {tab === 'login' ? <Login onSuccess={handleSuccess} /> : <Register onSuccess={handleSuccess} />}
+
+              <div className="tab-panel" role="tabpanel">
+                {tab === 'login' && <Login onSuccess={handleSuccess} />}
+                {tab === 'register' && <Register onSuccess={handleSuccess} />}
               </div>
             </div>
           </div>

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react'
-import { AuthContext } from '../contexts/AuthContext'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import API from '../services/api'
 
 export default function Profile() {
-  const { user, setUser } = useContext(AuthContext)
+  const { user, setUser } = useAuth()
+  const [activeTab, setActiveTab] = useState('info') // 'info', 'stats', 'password'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
@@ -13,7 +14,8 @@ export default function Profile() {
   const [profile, setProfile] = useState({
     name: '',
     email: '',
-    role: ''
+    role: '',
+    team: null
   })
   
   const [passwordData, setPasswordData] = useState({
@@ -32,7 +34,8 @@ export default function Profile() {
       setProfile({
         name: response.data.name || '',
         email: response.data.email || '',
-        role: response.data.role || ''
+        role: response.data.role || '',
+        team: response.data.team || null
       })
     } catch (err) {
       setError('Erreur lors du chargement du profil')
@@ -121,136 +124,195 @@ export default function Profile() {
 
   return (
     <div className="container">
-      <div className="max-w-2xl mx-auto py-8">
+      <div className="max-w-4xl mx-auto py-8">
         <h1 className="text-3xl font-bold mb-8">Mon Profil</h1>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="alert alert-error mb-4">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <div className="alert alert-success mb-4">
             {success}
           </div>
         )}
 
-        {/* Section Informations personnelles */}
-        <div className="card mb-8">
-          <div className="card-header">
-            <h2 className="text-xl font-semibold">Informations personnelles</h2>
-          </div>
-          <div className="card-body">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Nom</label>
-                <input 
-                  type="text"
-                  className="w-full p-3 border rounded-lg"
-                  value={profile.name}
-                  onChange={(e) => handleProfileChange('name', e.target.value)}
-                  placeholder="Votre nom complet"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input 
-                  type="email"
-                  className="w-full p-3 border rounded-lg"
-                  value={profile.email}
-                  onChange={(e) => handleProfileChange('email', e.target.value)}
-                  placeholder="votre@email.com"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium mb-2">Rôle</label>
-              <input 
-                type="text"
-                className="w-full p-3 border rounded-lg bg-gray-100"
-                value={profile.role}
-                disabled
-                placeholder="Rôle dans l'organisation"
-              />
-              <p className="text-sm text-gray-600 mt-1">Le rôle ne peut pas être modifié</p>
-            </div>
-
-            <div className="mt-6">
-              <button 
-                className="btn btn-primary"
-                onClick={saveProfile}
-                disabled={saving}
-              >
-                {saving ? 'Sauvegarde...' : '💾 Sauvegarder le profil'}
-              </button>
-            </div>
-          </div>
+        {/* Navigation par onglets */}
+        <div className="profile-nav">
+          <button 
+            className={`profile-nav-tab ${activeTab === 'info' ? 'active' : ''}`}
+            onClick={() => setActiveTab('info')}
+          >
+            👤 Informations personnelles
+          </button>
+          <button 
+            className={`profile-nav-tab ${activeTab === 'stats' ? 'active' : ''}`}
+            onClick={() => setActiveTab('stats')}
+          >
+            📊 Statistiques
+          </button>
+          <button 
+            className={`profile-nav-tab ${activeTab === 'password' ? 'active' : ''}`}
+            onClick={() => setActiveTab('password')}
+          >
+            🔒 Mot de passe
+          </button>
         </div>
 
-        {/* Section Changer le mot de passe */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-xl font-semibold">Changer le mot de passe</h2>
-          </div>
-          <div className="card-body">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Mot de passe actuel</label>
-                <input 
-                  type="password"
-                  className="w-full p-3 border rounded-lg"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                  placeholder="Votre mot de passe actuel"
-                />
+        {/* Contenu des onglets */}
+        <div className="profile-content">
+          {activeTab === 'info' && (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="text-xl font-semibold">Informations personnelles</h2>
+                <p className="text-sm text-gray-600">Gérez vos informations de profil</p>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Nouveau mot de passe</label>
-                <input 
-                  type="password"
-                  className="w-full p-3 border rounded-lg"
-                  value={passwordData.newPassword}
-                  onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                  placeholder="Nouveau mot de passe (min. 6 caractères)"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Confirmer le nouveau mot de passe</label>
-                <input 
-                  type="password"
-                  className="w-full p-3 border rounded-lg"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                  placeholder="Répétez le nouveau mot de passe"
-                />
+              <div className="card-body">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Nom complet</label>
+                    <input 
+                      type="text"
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={profile.name}
+                      onChange={(e) => handleProfileChange('name', e.target.value)}
+                      placeholder="Votre nom complet"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Adresse email</label>
+                    <input 
+                      type="email"
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={profile.email}
+                      onChange={(e) => handleProfileChange('email', e.target.value)}
+                      placeholder="votre@email.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium mb-2">Rôle</label>
+                  <input 
+                    type="text"
+                    className="w-full p-3 border rounded-lg bg-gray-100"
+                    value={profile.role}
+                    disabled
+                    placeholder="Rôle dans l'organisation"
+                  />
+                  <p className="text-sm text-gray-600 mt-1">Le rôle est défini par l'administrateur</p>
+                </div>
+
+                {/* Code d'équipe */}
+                {profile.team && (
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-sm font-semibold mb-2">🎯 Code d'équipe</h3>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 px-3 py-2 bg-white border rounded font-mono text-lg tracking-wider">
+                        {profile.team.teamCode}
+                      </code>
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(profile.team.teamCode)
+                          setSuccess('Code copié dans le presse-papier !')
+                          setTimeout(() => setSuccess(null), 2000)
+                        }}
+                      >
+                        📋 Copier
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Partagez ce code avec vos collègues pour qu'ils rejoignent votre équipe lors de l'inscription.
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1 font-medium">
+                      Équipe : {profile.team.name}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-8 flex justify-end">
+                  <button 
+                    className="btn btn-primary"
+                    onClick={saveProfile}
+                    disabled={saving}
+                  >
+                    {saving ? 'Sauvegarde...' : '💾 Sauvegarder les modifications'}
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="mt-6">
-              <button 
-                className="btn btn-secondary"
-                onClick={changePassword}
-                disabled={changingPassword}
-              >
-                {changingPassword ? 'Changement...' : '🔒 Changer le mot de passe'}
-              </button>
+          {activeTab === 'stats' && (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="text-xl font-semibold">Mes statistiques</h2>
+                <p className="text-sm text-gray-600">Aperçu de votre activité</p>
+              </div>
+              <div className="card-body">
+                <UserStats />
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Section Statistiques */}
-        <div className="card mt-8">
-          <div className="card-header">
-            <h2 className="text-xl font-semibold">Mes statistiques</h2>
-          </div>
-          <div className="card-body">
-            <UserStats />
-          </div>
+          {activeTab === 'password' && (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="text-xl font-semibold">Changer le mot de passe</h2>
+                <p className="text-sm text-gray-600">Assurez-vous d'utiliser un mot de passe sécurisé</p>
+              </div>
+              <div className="card-body">
+                <div className="max-w-md space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Mot de passe actuel</label>
+                    <input 
+                      type="password"
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                      placeholder="Votre mot de passe actuel"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Nouveau mot de passe</label>
+                    <input 
+                      type="password"
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={passwordData.newPassword}
+                      onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                      placeholder="Nouveau mot de passe (min. 6 caractères)"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Confirmer le nouveau mot de passe</label>
+                    <input 
+                      type="password"
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                      placeholder="Répétez le nouveau mot de passe"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={changePassword}
+                    disabled={changingPassword}
+                  >
+                    {changingPassword ? 'Changement en cours...' : '🔒 Changer le mot de passe'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -265,14 +327,16 @@ function UserStats() {
     issuesByType: {}
   })
   const [loading, setLoading] = useState(true)
+  const [myIssuesOnly, setMyIssuesOnly] = useState(false)
 
   useEffect(() => {
     fetchUserStats()
-  }, [])
+  }, [myIssuesOnly])
 
   const fetchUserStats = async () => {
     try {
-      const response = await API.get('/api/auth/stats')
+      const url = myIssuesOnly ? '/api/auth/stats?myIssuesOnly=true' : '/api/auth/stats'
+      const response = await API.get(url)
       setStats(response.data)
     } catch (err) {
       console.error('Erreur lors du chargement des statistiques:', err)
@@ -286,20 +350,64 @@ function UserStats() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="text-center p-4 bg-blue-50 rounded-lg">
-        <div className="text-2xl font-bold text-blue-600">{stats.totalIssues}</div>
-        <div className="text-sm text-gray-600">Issues créées</div>
+    <div className="space-y-6">
+      {/* Toggle pour filtrer les stats */}
+      <div className="flex justify-end">
+        <button 
+          className={`btn ${myIssuesOnly ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setMyIssuesOnly(!myIssuesOnly)}
+        >
+          {myIssuesOnly ? '✅ Mes issues assignées' : '👥 Issues de l\'équipe'}
+        </button>
       </div>
-      
-      <div className="text-center p-4 bg-green-50 rounded-lg">
-        <div className="text-2xl font-bold text-green-600">{stats.issuesByStatus?.done || 0}</div>
-        <div className="text-sm text-gray-600">Issues terminées</div>
+
+      {/* Statistiques principales */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="stat-card stat-card-blue">
+          <div className="stat-icon">📝</div>
+          <div className="stat-number">{stats.totalIssues}</div>
+          <div className="stat-label">Issues créées</div>
+        </div>
+        
+        <div className="stat-card stat-card-green">
+          <div className="stat-icon">✅</div>
+          <div className="stat-number">{stats.issuesByStatus?.done || 0}</div>
+          <div className="stat-label">Issues terminées</div>
+        </div>
+        
+        <div className="stat-card stat-card-orange">
+          <div className="stat-icon">⏳</div>
+          <div className="stat-number">{stats.issuesByStatus?.inprogress || 0}</div>
+          <div className="stat-label">En cours</div>
+        </div>
+
+        <div className="stat-card stat-card-purple">
+          <div className="stat-icon">🔍</div>
+          <div className="stat-number">{stats.issuesByStatus?.inreview || 0}</div>
+          <div className="stat-label">En révision</div>
+        </div>
       </div>
-      
-      <div className="text-center p-4 bg-orange-50 rounded-lg">
-        <div className="text-2xl font-bold text-orange-600">{stats.issuesByStatus?.inprogress || 0}</div>
-        <div className="text-sm text-gray-600">Issues en cours</div>
+
+      {/* Répartition par type */}
+      <div className="max-w-sm mx-auto">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800 text-center">Répartition par type</h3>
+        <div className="space-y-3">
+          <div className="type-stat">
+            <span className="type-icon">🐛</span>
+            <span className="type-label">Bugs</span>
+            <span className="type-count">{stats.issuesByType?.bug || 0}</span>
+          </div>
+          <div className="type-stat">
+            <span className="type-icon">⭐</span>
+            <span className="type-label">Features</span>
+            <span className="type-count">{stats.issuesByType?.feature || 0}</span>
+          </div>
+          <div className="type-stat">
+            <span class="type-icon">📋</span>
+            <span className="type-label">Tasks</span>
+            <span className="type-count">{stats.issuesByType?.task || 0}</span>
+          </div>
+        </div>
       </div>
     </div>
   )
