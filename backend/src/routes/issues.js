@@ -4,8 +4,8 @@ const auth = require('../middlewares/auth');
 const { createIssue, listIssues, getIssue, updateIssue, deleteIssue } = require('../controllers/issueController');
 const { createIssueRules, handleValidation } = require('../validators/issueValidator');
 
-router.get('/', listIssues);
-router.get('/:id', getIssue);
+router.get('/', auth, listIssues);
+router.get('/:id', auth, getIssue);
 router.post('/', auth, createIssueRules, handleValidation, createIssue);
 
 // Separate route for delete action via POST with action

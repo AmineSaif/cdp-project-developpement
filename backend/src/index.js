@@ -7,16 +7,12 @@ const sequelize = require('./config/database');
 
 console.log('DB CONFIG ->', { host: process.env.DB_HOST, port: process.env.DB_PORT, user: process.env.DB_USER, database: process.env.DB_NAME });
 
-// Import models to register them with sequelize
-const User = require('./models/user');
-const Issue = require('./models/issue');
-
-// Define associations (simple)
-Issue.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeId' });
-Issue.belongsTo(User, { as: 'creator', foreignKey: 'createdById' });
+// Import models and define associations
+const { User, Issue, Team } = require('./models');
 
 const authRoutes = require('./routes/auth');
 const issueRoutes = require('./routes/issues');
+const teamRoutes = require('./routes/teams');
 
 const app = express();
 app.use(cors());
@@ -26,6 +22,7 @@ app.get('/', (req, res) => res.json({ status: 'ok', env: process.env.NODE_ENV ||
 
 app.use('/api/auth', authRoutes);
 app.use('/api/issues', issueRoutes);
+app.use('/api/teams', teamRoutes);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
@@ -34,7 +31,7 @@ async function start() {
     await sequelize.authenticate();
     // Sync models (safe for dev). In production, use migrations.
     console.log('Syncing database schema...');
-    await sequelize.sync({ force: false, alter: true });
+    await sequelize.sync({ force: false, alter: false });
     console.log('Database schema synced successfully');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {

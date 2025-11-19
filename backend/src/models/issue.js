@@ -45,6 +45,15 @@ const Issue = sequelize.define('Issue', {
       model: 'users',
       key: 'id'
     }
+  },
+  teamId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'teams',
+      key: 'id'
+    },
+    comment: 'Équipe à laquelle appartient cette issue'
   }
 }, {
   tableName: 'issues',
