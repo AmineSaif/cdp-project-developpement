@@ -89,6 +89,9 @@ async function login(req, res) {
   try {
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user.passwordHash || typeof user.passwordHash !== 'string') {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
     const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, jwtSecret, { expiresIn: '7d' });
@@ -177,6 +180,9 @@ async function changePassword(req, res) {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Verify current password
+    if (!user.passwordHash || typeof user.passwordHash !== 'string') {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isCurrentPasswordValid) {
       return res.status(401).json({ message: 'Current password is incorrect' });
