@@ -53,7 +53,16 @@ const Issue = sequelize.define('Issue', {
       model: 'teams',
       key: 'id'
     },
-    comment: 'Équipe à laquelle appartient cette issue'
+    comment: 'Équipe à laquelle appartient cette issue (deprecated, utiliser sprintId)'
+  },
+  sprintId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'sprints',
+      key: 'id'
+    },
+    comment: 'Sprint auquel appartient cette issue'
   }
 }, {
   tableName: 'issues',

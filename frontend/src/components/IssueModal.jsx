@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import API from '../services/api'
 
-export default function IssueModal({ issueId, onClose, onSaved, onDeleted }) {
+export default function IssueModal({ issueId, onClose, onSaved, onDeleted, projectId }) {
   const [issue, setIssue] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -14,16 +14,16 @@ export default function IssueModal({ issueId, onClose, onSaved, onDeleted }) {
     setLoading(true)
     API.get(`/api/issues/${issueId}`).then(res => setIssue(res.data)).catch(err => setError('Failed to load')).finally(() => setLoading(false))
     
-    // Charger les membres de l'équipe pour l'assignation
-    fetchTeamMembers()
-  }, [issueId])
+    // Charger les membres du projet pour l'assignation
+    if (projectId) fetchProjectMembers()
+  }, [issueId, projectId])
 
-  async function fetchTeamMembers() {
+  async function fetchProjectMembers() {
     try {
-      const res = await API.get('/api/teams/members')
+      const res = await API.get(`/api/projects/${projectId}/members`)
       setTeamMembers(res.data.members || [])
     } catch (err) {
-      console.error('Failed to fetch team members:', err)
+      console.error('Failed to fetch project members:', err)
     }
   }
 

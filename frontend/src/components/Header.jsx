@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { UserCircleIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import NotificationBell from './NotificationBell'
 
 export default function Header() {
   const nav = useNavigate()
@@ -29,7 +30,7 @@ export default function Header() {
           
         </div>
         <nav className="nav">
-          <Link to="/app" className="nav-link">Board</Link>
+          <Link to="/projects" className="nav-link">Projets</Link>
           {!auth.isAuthenticated ? (
             <>
               <Link to="/register" className="nav-cta">Register</Link>
@@ -37,6 +38,9 @@ export default function Header() {
             </>
           ) : (
             <div className="nav-user">
+              {/* Notifications */}
+              <NotificationBell />
+              
               <div className="user-dropdown">
                 <button 
                   className="user-box"

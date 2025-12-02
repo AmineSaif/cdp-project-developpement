@@ -6,7 +6,8 @@ import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
 
 export default function Register({ onSuccess }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '', teamCode: '' })
+  // Nouveau: projectCode optionnel (remplace teamCode)
+  const [form, setForm] = useState({ name: '', email: '', password: '', projectCode: '' })
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const nav = useNavigate()
@@ -16,18 +17,23 @@ export default function Register({ onSuccess }) {
   async function submit(e) {
     e.preventDefault()
     try {
-      const res = await API.post('/api/auth/register', form)
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        projectCode: form.projectCode ? form.projectCode.trim().toLowerCase() : undefined
+      }
+      const res = await API.post('/api/auth/register', payload)
       auth.login(res.data.token)
-      
-      // Si un code d'équipe a été généré (nouvelle équipe)
-      if (res.data.user.teamCode) {
-        setSuccess(`Équipe créée ! Votre code d'invitation : ${res.data.user.teamCode}`)
+      // Si nouveau projet créé => renvoyer son code
+      if (res.data.user.projectCode) {
+        setSuccess(`Projet créé ! Code projet à partager : ${res.data.user.projectCode}`)
         setTimeout(() => {
-          if (onSuccess && typeof onSuccess === 'function') onSuccess(res.data)
+          if (onSuccess) onSuccess(res.data)
           else nav('/app')
         }, 3000)
       } else {
-        if (onSuccess && typeof onSuccess === 'function') onSuccess(res.data)
+        if (onSuccess) onSuccess(res.data)
         else nav('/app')
       }
     } catch (err) {
@@ -55,15 +61,15 @@ export default function Register({ onSuccess }) {
             <input className="form-input" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
           </div>
           <div className='margin-top-1'>
-            <label className="block text-sm text-slate-700">Code d'équipe (optionnel)</label>
+            <label className="block text-sm text-slate-700">Code projet (optionnel)</label>
             <input 
               className="form-input" 
-              placeholder="Laissez vide pour créer une nouvelle équipe"
-              value={form.teamCode} 
-              onChange={e => setForm({ ...form, teamCode: e.target.value.toUpperCase() })} 
+              placeholder="Laissez vide pour créer un nouveau projet"
+              value={form.projectCode} 
+              onChange={e => setForm({ ...form, projectCode: e.target.value })} 
             />
             <p className="text-xs text-slate-500 mt-1">
-              Entrez un code pour rejoindre une équipe, ou laissez vide pour en créer une nouvelle
+              Entrez un code pour rejoindre un projet existant, ou laissez vide pour créer client + projet + sprint initial.
             </p>
           </div>
           <div>

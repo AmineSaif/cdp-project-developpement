@@ -4,62 +4,78 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const User = require('../models/user');
-const Team = require('../models/team');
-const { generateUniqueTeamCode } = require('../utils/teamCodeGenerator');
+const Team = require('../models/team'); // legacy
+const { Client, Project, Sprint } = require('../models');
+const { generateUniqueProjectCode } = require('../utils/projectCodeGenerator');
 
 const jwtSecret = process.env.JWT_SECRET || 'changeme';
 
 async function register(req, res) {
-  const { name, email, password, role, teamCode } = req.body || {};
+  // Nouveau flux: projectCode optionnel. Si absent => création Client + Project + Sprint init.
+  const { name, email, password, role, projectCode } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ message: 'name, email and password required' });
   try {
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(409).json({ message: 'Email already used' });
-    
     const passwordHash = await bcrypt.hash(password, 10);
-    
-    let teamId = null;
-    let createdTeamCode = null;
-    
-    // Si un code d'équipe est fourni, rejoindre l'équipe existante
-    if (teamCode) {
-      const team = await Team.findOne({ where: { teamCode: teamCode.toUpperCase() } });
-      if (!team) {
-        return res.status(404).json({ message: 'Code d\'équipe invalide' });
-      }
-      teamId = team.id;
-    } else {
-      // Sinon, créer une nouvelle équipe avec un code unique
-      const newTeamCode = await generateUniqueTeamCode();
-      const newTeam = await Team.create({
-        name: `Équipe de ${name}`,
-        teamCode: newTeamCode,
-        createdById: null // Temporaire, on va le mettre à jour après
+
+    // Créer l'utilisateur (sans team par défaut, l'équipe peut venir du projet)
+    const user = await User.create({ name, email, passwordHash, role });
+
+    let createdEntities = {}; // Pour renvoyer au frontend
+
+    if (projectCode) {
+      // Rejoindre un projet existant via projectCode
+      const project = await Project.findOne({
+        where: { projectCode: projectCode.toLowerCase() },
+        include: [
+          { model: Team, as: 'team' },
+          { model: Client, as: 'client' }
+        ]
       });
-      teamId = newTeam.id;
-      createdTeamCode = newTeamCode;
+      if (!project) {
+        return res.status(404).json({ message: 'Code projet invalide' });
+      }
+      // Hériter de son éventuelle équipe
+      if (project.teamId) {
+        await user.update({ teamId: project.teamId });
+      }
+      createdEntities.joinedProjectId = project.id;
+    } else {
+      // Création d'un nouveau client + projet + sprint initial
+      const client = await Client.create({ name: `Client de ${name}`, ownerId: user.id });
+      const newProjectCode = await generateUniqueProjectCode();
+      const project = await Project.create({
+        name: `Projet principal de ${name}`,
+        description: 'Projet initial créé à l\'inscription',
+        projectCode: newProjectCode,
+        clientId: client.id,
+        teamId: null,
+        createdById: user.id
+      });
+      const sprint = await Sprint.create({
+        name: 'Sprint 1',
+        projectId: project.id,
+        status: 'planned',
+        createdById: user.id
+      });
+      createdEntities.clientId = client.id;
+      createdEntities.projectId = project.id;
+      createdEntities.projectCode = newProjectCode;
+      createdEntities.initialSprintId = sprint.id;
     }
-    
-    // Créer l'utilisateur avec l'équipe
-    const user = await User.create({ name, email, passwordHash, role, teamId });
-    
-    // Si on a créé une équipe, mettre à jour le createdById
-    if (createdTeamCode) {
-      await Team.update({ createdById: user.id }, { where: { teamCode: createdTeamCode } });
-    }
-    
+
     const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, jwtSecret, { expiresIn: '7d' });
-    
-    return res.status(201).json({ 
-      token, 
-      user: { 
-        id: user.id, 
-        name: user.name, 
-        email: user.email, 
+    return res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
         role: user.role,
-        teamId: user.teamId,
-        teamCode: createdTeamCode // Retourner le code si nouvelle équipe créée
-      } 
+        teamId: user.teamId || null,
+        ...createdEntities
+      }
     });
   } catch (err) {
     console.error(err);
@@ -85,23 +101,22 @@ async function login(req, res) {
 
 async function me(req, res) {
   try {
-    const userId = req.user && req.user.id
-    if (!userId) return res.status(401).json({ message: 'Not authenticated' })
-    
-    const user = await User.findByPk(userId, { 
+    const userId = req.user && req.user.id;
+    if (!userId) return res.status(401).json({ message: 'Not authenticated' });
+    const user = await User.findByPk(userId, {
       attributes: ['id', 'name', 'email', 'role', 'teamId'],
-      include: [{
-        model: Team,
-        as: 'team',
-        attributes: ['id', 'name', 'teamCode']
-      }]
-    })
-    
-    if (!user) return res.status(404).json({ message: 'User not found' })
-    return res.json(user)
+      include: [
+        { model: Team, as: 'team', attributes: ['id', 'name', 'teamCode'] },
+        { model: Project, as: 'createdProjects', attributes: ['id', 'name', 'projectCode', 'clientId'] },
+        { model: Sprint, as: 'createdSprints', attributes: ['id', 'name', 'projectId', 'status'] },
+        { model: Client, as: 'ownedClients', attributes: ['id', 'name'] }
+      ]
+    });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    return res.json(user);
   } catch (err) {
-    console.error(err)
-    return res.status(500).json({ message: 'Server error' })
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
   }
 }
 
@@ -182,50 +197,30 @@ async function getUserStats(req, res) {
   try {
     const userId = req.user && req.user.id;
     if (!userId) return res.status(401).json({ message: 'Not authenticated' });
-
     const Issue = require('../models/issue');
-    const { myIssuesOnly } = req.query;
-    
-    // Get user to check teamId
-    const user = await User.findByPk(userId, { attributes: ['id', 'teamId'] });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    
-    // Préparer les conditions de filtrage
+    const { myIssuesOnly, sprintId, projectId } = req.query;
+
+    // Base conditions
     const whereConditions = {};
-    
-    if (myIssuesOnly === 'true') {
-      // Seulement les issues assignées à moi
-      whereConditions.assigneeId = userId;
-    } else {
-      // Issues de mon équipe (si j'en ai une)
-      if (user.teamId) {
-        whereConditions.teamId = user.teamId;
-      } else {
-        // Si pas d'équipe, seulement mes issues créées
-        whereConditions.createdById = userId;
-      }
+    if (sprintId) whereConditions.sprintId = Number(sprintId);
+    if (projectId && !sprintId) {
+      // Filtrer par project via jointure Sprint -> Project
+      // Fallback: récupérer tous les sprints du projet
+      const sprints = await Sprint.findAll({ where: { projectId: Number(projectId) }, attributes: ['id'] });
+      whereConditions.sprintId = sprints.map(s => s.id);
     }
-    
-    // Get all matching issues
-    const allIssues = await Issue.findAll({ 
-      where: whereConditions,
-      attributes: ['status', 'type']
-    });
 
-    // Count by status
-    const issuesByStatus = {};
-    const issuesByType = {};
+    if (myIssuesOnly === 'true') {
+      whereConditions.assigneeId = userId;
+    }
 
+    const allIssues = await Issue.findAll({ where: whereConditions, attributes: ['status', 'type'] });
+    const issuesByStatus = {}; const issuesByType = {};
     allIssues.forEach(issue => {
       issuesByStatus[issue.status] = (issuesByStatus[issue.status] || 0) + 1;
       issuesByType[issue.type] = (issuesByType[issue.type] || 0) + 1;
     });
-
-    return res.json({
-      totalIssues: allIssues.length,
-      issuesByStatus,
-      issuesByType
-    });
+    return res.json({ totalIssues: allIssues.length, issuesByStatus, issuesByType });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });

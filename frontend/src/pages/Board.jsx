@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react'
 import API from '../services/api'
 import IssueModal from '../components/IssueModal'
 import CreateIssueModal from '../components/CreateIssueModal'
+import CreateSprintModal from '../components/CreateSprintModal'
+import { useProject } from '../context/ProjectContext'
+import { useNavigate } from 'react-router-dom'
 
 const STATUS_KEYS = [
   { key: 'todo', label: 'To Do' },
@@ -21,21 +24,57 @@ function normalizeStatus(s) {
 }
 
 export default function Board() {
+  const { project, sprint, setSprint } = useProject();
   const [issues, setIssues] = useState([])
   const [dragging, setDragging] = useState(null)
   const [overColumn, setOverColumn] = useState(null)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCreateSprintModal, setShowCreateSprintModal] = useState(false)
   const [myIssuesOnly, setMyIssuesOnly] = useState(false)
+  const [sprints, setSprints] = useState([])
+  const nav = useNavigate();
 
+  // Redirection si aucun projet sélectionné
   useEffect(() => {
-    fetchIssues()
-  }, [myIssuesOnly])
+    if (!project) nav('/projects');
+  }, [project, nav]);
 
-  function fetchIssues() {
-    const url = myIssuesOnly ? '/api/issues?myIssuesOnly=true' : '/api/issues'
-    API.get(url).then(res => setIssues(res.data)).catch(err => { console.error(err); setError('Failed to load issues') })
+  // Charger sprints quand le projet est disponible
+  useEffect(() => {
+    if (project) fetchSprints(project.id)
+  }, [project])
+
+  // Nettoyage quand le projet change (évite affichage ancien sprint / issues)
+  useEffect(() => {
+    setIssues([]);
+    setSprints([]);
+    // sprint est déjà remis à null dans setProject du contexte
+  }, [project])
+
+  // Charger issues quand sprint ou filtre change
+  useEffect(() => {
+    if (sprint) fetchIssues()
+  }, [sprint, myIssuesOnly])
+
+  async function fetchSprints(projectId) {
+    try {
+      const res = await API.get(`/api/sprints?projectId=${projectId}`)
+      const list = res.data.sprints || []
+      setSprints(list)
+      if (list.length && !sprint) setSprint(list[0])
+    } catch (err) { console.error(err); setError('Failed to load sprints') }
+  }
+
+  async function fetchIssues() {
+    if (!sprint) return
+    const base = `/api/issues?sprintId=${sprint.id}`
+    const url = myIssuesOnly ? `${base}&myIssuesOnly=true` : base
+    try {
+      const res = await API.get(url)
+      setIssues(res.data)
+    } catch (err) { console.error(err); setError('Failed to load issues') }
   }
 
   function grouped() {
@@ -83,17 +122,44 @@ export default function Board() {
 
   return (
     <div className="board-root">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Board</h2>
-        <div className="flex gap-2">
-          <button 
-            className={`btn ${myIssuesOnly ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setMyIssuesOnly(!myIssuesOnly)}
-          >
-            {myIssuesOnly ? '✅ Mes issues' : '👥 Toutes les issues'}
-          </button>
-          <button className="btn" onClick={() => setShowCreateModal(true)}>+ New Issue</button>
-          <button className="btn btn-outline" onClick={() => { setError(null); fetchIssues() }}>Refresh</button>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Board - {project ? project.name : 'Aucun projet'}</h2>
+          <div className="flex gap-2">
+            <button
+              className={`btn ${myIssuesOnly ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setMyIssuesOnly(!myIssuesOnly)}
+            >{myIssuesOnly ? '✅ Mes issues' : '👥 Toutes les issues'}</button>
+            <button className="btn" disabled={!sprint} onClick={() => setShowCreateModal(true)}>+ Issue</button>
+            <button className="btn btn-outline" onClick={() => { setError(null); fetchIssues() }}>Refresh</button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-semibold">Sprint</label>
+            <div className="flex gap-2 mt-1">
+              <select 
+                className="flex-1 p-2 border rounded"
+                value={sprint?.id || ''}
+                onChange={e => {
+                  const s = sprints.find(x => x.id === Number(e.target.value));
+                  setSprint(s || null);
+                }}>
+                {sprints.length === 0 && <option value="">Aucun sprint</option>}
+                {sprints.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status})</option>)}
+              </select>
+              <button 
+                className="btn" 
+                onClick={() => setShowCreateSprintModal(true)}
+                title="Créer un nouveau sprint"
+              >
+                + Sprint
+              </button>
+            </div>
+          </div>
+          {project?.projectCode && (
+            <div className="text-xs mt-6 text-slate-600">Code projet: <span className="font-mono">{project.projectCode}</span></div>
+          )}
         </div>
       </div>
 
@@ -132,7 +198,7 @@ export default function Board() {
         ))}
       </div>
 
-      {selected && <IssueModal issueId={selected} onClose={() => setSelected(null)} onSaved={(updated) => {
+      {selected && <IssueModal issueId={selected} projectId={sprint?.projectId} onClose={() => setSelected(null)} onSaved={(updated) => {
         // update local issue list with saved data
         setIssues(prev => prev.map(it => it.id === updated.id ? updated : it))
       }} onDeleted={(deletedId) => {
@@ -140,9 +206,14 @@ export default function Board() {
         setIssues(prev => prev.filter(it => it.id !== deletedId))
       }} />}
 
-      {showCreateModal && <CreateIssueModal onClose={() => setShowCreateModal(false)} onCreated={(newIssue) => {
-        // Add new issue to local state - should naturally be in 'todo' column
+      {showCreateModal && <CreateIssueModal sprintId={sprint?.id} projectId={sprint?.projectId} onClose={() => setShowCreateModal(false)} onCreated={(newIssue) => {
         setIssues(prev => [...prev, newIssue])
+      }} />}
+
+      {showCreateSprintModal && <CreateSprintModal projectId={project?.id} onClose={() => setShowCreateSprintModal(false)} onCreated={(newSprint) => {
+        setSprints(prev => [...prev, newSprint])
+        setSprint(newSprint)
+        setShowCreateSprintModal(false)
       }} />}
     </div>
   )

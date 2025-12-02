@@ -1,24 +1,29 @@
+
+
 import React, { useState } from 'react'
 import API from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { useAuth } from '../context/AuthContext'
+import { useProject } from '../context/ProjectContext'
 
 export default function Login({ onSuccess }) {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState(null)
   const nav = useNavigate()
   const auth = useAuth()
+  const { clearSelection } = useProject()
 
   async function submit(e) {
     e.preventDefault()
     try {
-  const res = await API.post('/api/auth/login', form)
-  // update context
-  auth.login(res.data.token)
-  if (onSuccess && typeof onSuccess === 'function') onSuccess(res.data)
-  else nav('/app')
+      const res = await API.post('/api/auth/login', form)
+      // update context
+      auth.login(res.data.token)
+      clearSelection() // Vide le contexte projet/sprint à chaque login
+      if (onSuccess && typeof onSuccess === 'function') onSuccess(res.data)
+      else nav('/projects')
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed')
     }

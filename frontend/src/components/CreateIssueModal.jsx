@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import API from '../services/api'
 
-export default function CreateIssueModal({ onClose, onCreated }) {
+export default function CreateIssueModal({ onClose, onCreated, sprintId, projectId }) {
   const [form, setForm] = useState({ title: '', description: '', type: 'task', priority: 'low', assigneeId: null })
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState([])
 
   useEffect(() => {
-    fetchTeamMembers()
-  }, [])
+    if (projectId) fetchProjectMembers()
+  }, [projectId])
 
-  async function fetchTeamMembers() {
+  async function fetchProjectMembers() {
     try {
-      const res = await API.get('/api/teams/members')
+      const res = await API.get(`/api/projects/${projectId}/members`)
       setTeamMembers(res.data.members || [])
     } catch (err) {
-      console.error('Failed to fetch team members:', err)
+      console.error('Failed to fetch project members:', err)
     }
   }
 
@@ -29,9 +29,14 @@ export default function CreateIssueModal({ onClose, onCreated }) {
       setError('Title is required')
       return
     }
+    if (!sprintId) {
+      setError('Aucun sprint sélectionné')
+      return
+    }
     setSaving(true)
     try {
-      const res = await API.post('/api/issues', { ...form, status: 'todo' })
+      const payload = { ...form, status: 'todo', sprintId }
+      const res = await API.post('/api/issues', payload)
       onCreated && onCreated(res.data)
       onClose && onClose()
     } catch (err) {

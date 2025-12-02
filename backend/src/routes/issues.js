@@ -4,8 +4,10 @@ const auth = require('../middlewares/auth');
 const { createIssue, listIssues, getIssue, updateIssue, deleteIssue } = require('../controllers/issueController');
 const { createIssueRules, handleValidation } = require('../validators/issueValidator');
 
+// Nécessite sprintId en query: /api/issues?sprintId=XX&myIssuesOnly=true
 router.get('/', auth, listIssues);
 router.get('/:id', auth, getIssue);
+// Pour créer: body { title, ..., sprintId }
 router.post('/', auth, createIssueRules, handleValidation, createIssue);
 
 // Separate route for delete action via POST with action
