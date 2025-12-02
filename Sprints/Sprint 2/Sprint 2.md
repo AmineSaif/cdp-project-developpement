@@ -1,4 +1,4 @@
-# Sprint 3 – Projets, Statistiques & UX Finale
+# Sprint  – Projets, Statistiques & UX Finale
 
 **Période :** 20 Novembre - 3 Décembre 2025  
 **Équipe :** Saif Amine, Ameziane Adnane, Chelh Monir  
