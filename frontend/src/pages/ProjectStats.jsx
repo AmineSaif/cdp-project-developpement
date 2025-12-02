@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useProject } from '../context/ProjectContext';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
   PieChart,
   Pie,
@@ -58,6 +60,176 @@ const ProjectStats = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateSprintPDF = () => {
+    const doc = new jsPDF();
+    const currentSprint = stats.sprints?.find(s => s.status === 'active');
+    
+    if (!currentSprint) {
+      alert('Aucun sprint actif pour generer un rapport');
+      return;
+    }
+
+    // En-tête
+    doc.setFontSize(20);
+    doc.text(`Rapport Sprint: ${currentSprint.name}`, 20, 20);
+    
+    doc.setFontSize(12);
+    doc.text(`Projet: ${project.name}`, 20, 30);
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, 37);
+    doc.text(`Periode: ${new Date(currentSprint.startDate).toLocaleDateString('fr-FR')} - ${new Date(currentSprint.endDate).toLocaleDateString('fr-FR')}`, 20, 44);
+
+    // Statistiques du sprint
+    const sprintIssues = stats.overview.totalIssues; // À ajuster selon vos données
+    doc.text(`Issues totales: ${sprintIssues}`, 20, 55);
+    doc.text(`Issues completees: ${stats.overview.completedIssues}`, 20, 62);
+    doc.text(`Progression: ${stats.overview.completionRate}%`, 20, 69);
+
+    // Tableau des issues par statut
+    const statusData = stats.issuesByStatus.map(item => [
+      item.status === 'todo' ? 'A faire' :
+      item.status === 'inprogress' ? 'En cours' :
+      item.status === 'inreview' ? 'En revue' : 'Termine',
+      item.count
+    ]);
+
+    doc.autoTable({
+      startY: 80,
+      head: [['Statut', 'Nombre']],
+      body: statusData,
+    });
+
+    // Tableau des issues par priorité
+    const priorityData = stats.issuesByPriority.map(item => [
+      item.priority === 'low' ? 'Basse' :
+      item.priority === 'medium' ? 'Moyenne' : 'Haute',
+      item.count
+    ]);
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [['Priorite', 'Nombre']],
+      body: priorityData,
+    });
+
+    // Santé du sprint
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.text('Sante du Sprint', 20, finalY);
+    doc.setFontSize(11);
+    doc.text(`Score: ${stats.health.score}/100`, 20, finalY + 10);
+    doc.text(`Statut: ${stats.health.status === 'good' ? 'Bon' : stats.health.status === 'warning' ? 'Attention' : 'Critique'}`, 20, finalY + 17);
+    
+    stats.health.issues.forEach((issue, index) => {
+      doc.text(`- ${issue}`, 25, finalY + 24 + (index * 7));
+    });
+
+    doc.save(`rapport-sprint-${currentSprint.name}-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generateProjectPDF = () => {
+    const doc = new jsPDF();
+
+    // En-tête
+    doc.setFontSize(20);
+    doc.text(`Rapport Global du Projet`, 20, 20);
+    
+    doc.setFontSize(12);
+    doc.text(`Projet: ${project.name}`, 20, 30);
+    doc.text(`Code: ${project.projectCode}`, 20, 37);
+    doc.text(`Date de generation: ${new Date().toLocaleDateString('fr-FR')}`, 20, 44);
+
+    // Vue d'ensemble
+    doc.setFontSize(14);
+    doc.text('Vue d\'ensemble', 20, 55);
+    doc.setFontSize(11);
+    doc.text(`Total issues: ${stats.overview.totalIssues}`, 20, 65);
+    doc.text(`Issues completees: ${stats.overview.completedIssues}`, 20, 72);
+    doc.text(`Issues en cours: ${stats.overview.inProgressIssues}`, 20, 79);
+    doc.text(`Taux de completion: ${stats.overview.completionRate}%`, 20, 86);
+    doc.text(`Total sprints: ${stats.overview.totalSprints}`, 20, 93);
+    doc.text(`Sprints actifs: ${stats.overview.activeSprints}`, 20, 100);
+
+    // Répartition par statut
+    const statusData = stats.issuesByStatus.map(item => [
+      item.status === 'todo' ? 'A faire' :
+      item.status === 'inprogress' ? 'En cours' :
+      item.status === 'inreview' ? 'En revue' : 'Termine',
+      item.count,
+      `${item.percentage}%`
+    ]);
+
+    doc.autoTable({
+      startY: 110,
+      head: [['Statut', 'Nombre', 'Pourcentage']],
+      body: statusData,
+    });
+
+    // Répartition par priorité
+    const priorityData = stats.issuesByPriority.map(item => [
+      item.priority === 'low' ? 'Basse' :
+      item.priority === 'medium' ? 'Moyenne' : 'Haute',
+      item.count,
+      `${item.percentage}%`
+    ]);
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [['Priorite', 'Nombre', 'Pourcentage']],
+      body: priorityData,
+    });
+
+    // Liste des sprints
+    if (stats.sprints && stats.sprints.length > 0) {
+      const sprintData = stats.sprints.map(sprint => [
+        sprint.name,
+        sprint.status === 'active' ? 'Actif' : 
+        sprint.status === 'completed' ? 'Complete' : 'Planifie',
+        sprint.issueCount || 0,
+        new Date(sprint.startDate).toLocaleDateString('fr-FR'),
+        new Date(sprint.endDate).toLocaleDateString('fr-FR')
+      ]);
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Sprint', 'Statut', 'Issues', 'Debut', 'Fin']],
+        body: sprintData,
+      });
+    }
+
+    // Santé du projet
+    doc.addPage();
+    doc.setFontSize(14);
+    doc.text('Sante du Projet', 20, 20);
+    doc.setFontSize(11);
+    doc.text(`Score global: ${stats.health.score}/100`, 20, 30);
+    doc.text(`Statut: ${stats.health.status === 'good' ? 'Bon' : stats.health.status === 'warning' ? 'Attention' : 'Critique'}`, 20, 37);
+    
+    if (stats.health.issues && stats.health.issues.length > 0) {
+      doc.text('Points d\'attention:', 20, 47);
+      stats.health.issues.forEach((issue, index) => {
+        doc.text(`- ${issue}`, 25, 54 + (index * 7));
+      });
+    }
+
+    // Progression hebdomadaire (dernières semaines)
+    if (stats.weeklyProgress && stats.weeklyProgress.length > 0) {
+      const weekData = stats.weeklyProgress.slice(-8).map(week => [
+        week.week,
+        week.completed,
+        week.created,
+        week.completed - week.created
+      ]);
+
+      doc.autoTable({
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 100,
+        head: [['Semaine', 'Completees', 'Creees', 'Net']],
+        body: weekData,
+      });
+    }
+
+    doc.save(`rapport-projet-${project.projectCode}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   if (loading) {
@@ -127,7 +299,17 @@ const ProjectStats = () => {
 
   return (
     <div className="project-stats-page">
-      <h1 className="stats-title">Statistiques du Projet</h1>
+      <div className="stats-header">
+        <h1 className="stats-title">Statistiques du Projet</h1>
+        <div className="stats-actions">
+          <button onClick={generateSprintPDF} className="btn-pdf btn-pdf-sprint">
+            📄 Rapport Sprint PDF
+          </button>
+          <button onClick={generateProjectPDF} className="btn-pdf btn-pdf-project">
+            📊 Rapport Projet PDF
+          </button>
+        </div>
+      </div>
 
       {/* Cartes de vue d'ensemble */}
       <div className="stats-overview">
