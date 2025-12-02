@@ -1,4 +1,4 @@
-# Sprint 2 - MVP Fonctionnel + Board Kanban
+# Sprint 1 - MVP Fonctionnel + Board Kanban
 
 **Période :** 13 Novembre - 19 Novembre 2025  
 **Équipe :**  Chelh Monir, Ameziane Adnane, Saif Amine  
@@ -8,7 +8,7 @@
 
 ## Contexte du Sprint
 
-Suite à la phase préparatoire du Sprint 0, le Sprint 2 (Sprint 1/2) représente le premier sprint de développement effectif. L'objectif principal était de livrer un MVP (Minimum Viable Product) fonctionnel avec les fonctionnalités essentielles de gestion de projet, incluant un Board Kanban innovant.
+Suite à la phase préparatoire du Sprint 0, le Sprint 1 (Sprint 1/2) représente le premier sprint de développement effectif. L'objectif principal était de livrer un MVP (Minimum Viable Product) fonctionnel avec les fonctionnalités essentielles de gestion de projet, incluant un Board Kanban innovant.
 
 ---
 
