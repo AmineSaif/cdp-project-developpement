@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 const { createIssue, listIssues, getIssue, updateIssue, deleteIssue } = require('../controllers/issueController');
 const { createIssueRules, handleValidation } = require('../validators/issueValidator');
 
 // Nécessite sprintId en query: /api/issues?sprintId=XX&myIssuesOnly=true
-router.get('/', auth, listIssues);
-router.get('/:id', auth, getIssue);
+router.get('/', authenticate, listIssues);
+router.get('/:id', authenticate, getIssue);
 // Pour créer: body { title, ..., sprintId }
-router.post('/', auth, createIssueRules, handleValidation, createIssue);
+router.post('/', authenticate, createIssueRules, handleValidation, createIssue);
 
 // Separate route for delete action via POST with action
-router.post('/:id/delete', auth, async (req, res) => {
+router.post('/:id/delete', authenticate, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const Issue = require('../models/issue');
@@ -28,12 +28,12 @@ router.post('/:id/delete', auth, async (req, res) => {
 });
 
 // Regular PATCH route for updates only
-router.patch('/:id', auth, handleValidation, updateIssue);
+router.patch('/:id', authenticate, handleValidation, updateIssue);
 
 // Keep DELETE route as backup
 router.delete('/:id', (req, res, next) => {
   console.log('DELETE route hit for ID:', req.params.id);
   next();
-}, auth, deleteIssue);
+}, authenticate, deleteIssue);
 
 module.exports = router;
