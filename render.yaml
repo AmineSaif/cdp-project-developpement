@@ -1,0 +1,72 @@
+# Render Blueprint pour GProjet (AMA Task Manager)
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # Backend Node.js + Express + Sequelize
+  - type: web
+    name: amataskmanager-backend
+    env: node
+    region: frankfurt # ou oregon, singapore selon votre préférence
+    plan: free # Plan gratuit
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/auth/me
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true # Génère automatiquement un secret sécurisé
+      - key: DB_HOST
+        fromDatabase:
+          name: amataskmanager-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: amataskmanager-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: amataskmanager-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: amataskmanager-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: amataskmanager-db
+          property: database
+
+  # Frontend React + Vite (Static Site)
+  - type: web
+    name: amataskmanager-frontend
+    env: static
+    region: frankfurt
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://amataskmanager-backend.onrender.com/api
+
+# Base de données PostgreSQL
+databases:
+  - name: amataskmanager-db
+    plan: free # Plan gratuit (expire après 90 jours, pensez à migrer)
+    databaseName: amataskmanager
+    user: amataskmanager_user
+    region: frankfurt
+    postgresMajorVersion: 15
