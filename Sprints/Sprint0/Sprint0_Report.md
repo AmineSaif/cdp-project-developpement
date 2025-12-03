@@ -275,10 +275,10 @@ npm install \--save-dev nodemon
 
 | Sprint | Dates | Objectifs Principaux |
 | :---: | :---: | :---: |
-| **Sprint 0** | 15 Oct \- 24 Oct | Setup et architecture |
-| **Sprint 1** | 25 Nov \- 5 Nov | Issues \+ Tâches \+ Auth |
-| **Sprint 2** | 6 Nov \- 20 Nov | Tests \+ Releases |
-| **Sprint 3** | 4 Déc \- 16 Déc | Documentation \+ Finalisations |
+| **Sprint 0** | 15 Oct \- 22 Oct | Setup et architecture |
+| **Sprint 1** | 23 Nov \- 5 Nov | Issues \+ Tâches \+ Auth |
+| **Sprint 2** | 6 Nov \- 19 Nov | Tests \+ Releases |
+| **Sprint 3** | 20 Nov \- 3 Déc | Documentation \+ Finalisations |
 | **Soutenance** | 16 Décembre | Présentation finale |
 
 ## **Definition of Done (DoD)**
