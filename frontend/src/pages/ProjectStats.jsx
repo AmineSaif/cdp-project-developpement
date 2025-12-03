@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import API from '../services/api';
 import { useProject } from '../context/ProjectContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -44,12 +44,8 @@ const ProjectStats = () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:4000/api/projects/${project.id}/stats`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const response = await API.get(
+        `/api/projects/${project.id}/stats`
       );
       setStats(response.data);
     } catch (err) {
@@ -396,27 +392,17 @@ const ProjectStats = () => {
     if (!project) return;
     try {
       setGenerating(true);
-      const token = localStorage.getItem('token');
-
       // Utiliser le projet du contexte et charger toutes les données nécessaires
-      const statsRes = await axios.get(`http://localhost:4000/api/projects/${project.id}/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const statsRes = await API.get(`/api/projects/${project.id}/stats`);
       const s = statsRes.data || {};
 
-      const sprintsRes = await axios.get(`http://localhost:4000/api/projects/${project.id}/sprints`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const sprintsRes = await API.get(`/api/projects/${project.id}/sprints`);
       const sprints = sprintsRes.data || [];
 
-      const projectRes = await axios.get(`http://localhost:4000/api/projects/${project.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const projectRes = await API.get(`/api/projects/${project.id}`);
       const proj = (projectRes.data && projectRes.data.project) ? projectRes.data.project : project;
 
-      const membersRes = await axios.get(`http://localhost:4000/api/projects/${project.id}/members`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const membersRes = await API.get(`/api/projects/${project.id}/members`);
       const members = (membersRes.data && membersRes.data.members) ? membersRes.data.members : [];
 
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });

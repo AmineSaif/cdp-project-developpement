@@ -26,8 +26,8 @@ export default function Landing() {
             </div>
             <div className="hero-right">
               <div className="tabs" role="tablist" aria-label="Auth tabs">
-                <button className={"tab " + (tab === 'login' ? 'tab--active' : '')} onClick={() => setTab('login')}>Login</button>
-                <button className={"tab " + (tab === 'register' ? 'tab--active' : '')} onClick={() => setTab('register')}>Register</button>
+                <button className={" btn w-full " + (tab === 'login' ? 'tab--active' : '')} onClick={() => setTab('login')}>Login</button>
+                <button className={" btn w-full " + (tab === 'register' ? 'tab--active' : '')} onClick={() => setTab('register')}>Register</button>
               </div>
 
               <div className="tab-panel" role="tabpanel">
