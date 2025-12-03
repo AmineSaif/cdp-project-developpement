@@ -5,6 +5,8 @@ import CreateIssueModal from '../components/CreateIssueModal'
 import CreateSprintModal from '../components/CreateSprintModal'
 import { useProject } from '../context/ProjectContext'
 import { useNavigate } from 'react-router-dom'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const STATUS_KEYS = [
   { key: 'todo', label: 'To Do' },
@@ -35,6 +37,7 @@ export default function Board() {
   const [myIssuesOnly, setMyIssuesOnly] = useState(false)
   const [sprints, setSprints] = useState([])
   const nav = useNavigate();
+  const [generating, setGenerating] = useState(false)
 
   // Redirection si aucun projet sélectionné
   useEffect(() => {
@@ -120,6 +123,111 @@ export default function Board() {
 
   const cols = grouped()
 
+  // Génération PDF du sprint sélectionné
+  const generateSprintPdf = async () => {
+    if (!sprint) return;
+    try { setGenerating(true) } catch {}
+    try {
+      const resSprint = await API.get(`/api/sprints/${sprint.id}`)
+      const sprintData = resSprint.data?.sprint || resSprint.data
+      const issuesRes = await API.get(`/api/sprints/${sprint.id}/issues`)
+      const sprintIssues = Array.isArray(issuesRes.data) ? issuesRes.data : (issuesRes.data?.issues || [])
+
+      // Préparer métriques détaillées
+      const toLower = (v) => String(v || '').toLowerCase()
+      const countBy = (arr, key) => arr.reduce((acc, it) => {
+        const k = toLower(it[key])
+        acc[k] = (acc[k] || 0) + 1
+        return acc
+      }, {})
+      const statusCounts = countBy(sprintIssues, 'status')
+      const typeCounts = countBy(sprintIssues, 'type')
+      const priorityCounts = countBy(sprintIssues, 'priority')
+
+      const done = sprintIssues.filter(i => toLower(i.status).includes('done')).length
+      const inprogress = sprintIssues.filter(i => toLower(i.status).includes('progress')).length
+      const inreview = sprintIssues.filter(i => toLower(i.status).includes('review')).length
+      const todo = sprintIssues.filter(i => toLower(i.status).includes('to')).length
+
+      const assigneeCounts = sprintIssues.reduce((acc, it) => {
+        const name = it.assignee?.name || it.assigneeName || 'Non assignée'
+        acc[name] = (acc[name] || 0) + 1
+        return acc
+      }, {})
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+      doc.setFontSize(16)
+      doc.text(`Rapport du sprint: ${sprintData?.name || sprintData?.title || sprint?.name || 'Sprint'}`, 40, 40)
+      doc.setFontSize(11)
+      doc.text(`Projet: ${project?.name || '-'}`, 40, 60)
+      doc.text(`Période: ${fmtDate(sprintData.startDate)} — ${fmtDate(sprintData.endDate)}`, 40, 75)
+      doc.text(`Statut: ${sprintData.status || '-'}`, 300, 60)
+      doc.text(`Issues totales: ${sprintIssues.length}`, 300, 75)
+
+      // Vue d'ensemble statuts
+      autoTable(doc, {
+        startY: 95,
+        head: [['Statut', 'Nombre']],
+        body: [
+          ['Terminées', done],
+          ['En cours', inprogress],
+          ['En révision', inreview],
+          ['À faire', todo]
+        ],
+        styles: { fontSize: 10 }
+      })
+
+      // Répartition par type
+      autoTable(doc, {
+        margin: { top: 20 },
+        head: [['Type', 'Nombre']],
+        body: Object.entries(typeCounts).map(([k, v]) => [k || '-', v]),
+        styles: { fontSize: 9 }
+      })
+
+      // Répartition par priorité
+      autoTable(doc, {
+        margin: { top: 20 },
+        head: [['Priorité', 'Nombre']],
+        body: Object.entries(priorityCounts).map(([k, v]) => [k || '-', v]),
+        styles: { fontSize: 9 }
+      })
+
+      // Répartition par assigné
+      autoTable(doc, {
+        margin: { top: 20 },
+        head: [['Assigné à', 'Nombre']],
+        body: Object.entries(assigneeCounts).map(([k, v]) => [k || '-', v]),
+        styles: { fontSize: 9 },
+        columnStyles: { 0: { cellWidth: 220 } }
+      })
+
+      // Détails des issues
+      autoTable(doc, {
+        margin: { top: 30 },
+        head: [['ID', 'Titre', 'Type', 'Priorité', 'Statut', 'Assignée à']],
+        body: sprintIssues.map(i => [
+          i.id,
+          truncate(i.title || i.name, 40),
+          i.type || '-',
+          i.priority || '-',
+          i.status || '-',
+          i.assignee?.name || i.assigneeName || '-'
+        ]),
+        styles: { fontSize: 9 },
+        columnStyles: { 1: { cellWidth: 220 } }
+      })
+
+      const fileName = (sprintData?.name || sprint?.name || `sprint-${sprint.id}`)
+      doc.save(`rapport-sprint-${slug(fileName)}.pdf`)
+    } catch (err) {
+      console.error('Erreur génération PDF sprint:', err)
+      alert('Impossible de générer le PDF du sprint.')
+    } finally {
+      try { setGenerating(false) } catch {}
+    }
+  }
+
   return (
     <div className="board-root">
       <div className="flex flex-col gap-4">
@@ -132,6 +240,9 @@ export default function Board() {
             >{myIssuesOnly ? '✅ Mes issues' : '👥 Toutes les issues'}</button>
             <button className="btn" disabled={!sprint} onClick={() => setShowCreateModal(true)}>+ Issue</button>
             <button className="btn btn-outline" onClick={() => { setError(null); fetchIssues() }}>Refresh</button>
+            <button className="btn btn-secondary" disabled={!sprint || generating} onClick={generateSprintPdf}>
+              {generating ? 'Génération...' : '🧾 Rapport PDF du sprint'}
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -217,4 +328,21 @@ export default function Board() {
       }} />}
     </div>
   )
+}
+
+function fmtDate(d) {
+  if (!d) return '-'
+  try { return new Date(d).toLocaleDateString() } catch { return '-' }
+}
+
+function truncate(str, n) {
+  if (!str) return ''
+  return str.length > n ? str.slice(0, n - 1) + '…' : str
+}
+
+function slug(str) {
+  return String(str || '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
 }

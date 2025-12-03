@@ -40,9 +40,8 @@ async function start() {
     await sequelize.authenticate();
     // Sync models (safe for dev). In production, use migrations.
     console.log('Syncing database schema...');
-    // Active alter en dev pour ajouter la colonne joinLocked sans migration
-    const alter = process.env.NODE_ENV !== 'production'
-    await sequelize.sync({ force: false, alter });
+    // Désactiver alter pour ne pas imposer des ALTER NOT NULL sur une base existante
+    await sequelize.sync({ force: false });
     console.log('Database schema synced successfully');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {

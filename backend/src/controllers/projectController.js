@@ -11,13 +11,21 @@ exports.createProject = async (req, res) => {
     const { name, description, clientId } = req.body;
     const userId = req.user.id;
 
-    // Vérifier que le client existe et appartient à l'utilisateur
-    const client = await Client.findOne({
-      where: { id: clientId, ownerId: userId }
-    });
-
-    if (!client) {
-      return res.status(403).json({ error: 'Client non trouvé ou accès non autorisé' });
+    let client;
+    if (clientId) {
+      // Vérifier que le client existe et appartient à l'utilisateur
+      client = await Client.findOne({
+        where: { id: clientId, ownerId: userId }
+      });
+      if (!client) {
+        return res.status(403).json({ error: 'Client non trouvé ou accès non autorisé' });
+      }
+    } else {
+      // Créer automatiquement un client si non fourni
+      client = await Client.create({
+        name: `Client pour ${name}`,
+        ownerId: userId
+      });
     }
 
     // Générer un code projet unique
@@ -27,7 +35,7 @@ exports.createProject = async (req, res) => {
       name,
       description,
       projectCode,
-      clientId,
+      clientId: client.id,
       createdById: userId
     });
 
@@ -47,6 +55,44 @@ exports.createProject = async (req, res) => {
   } catch (error) {
     console.error('Erreur création projet:', error);
     res.status(500).json({ error: 'Erreur lors de la création du projet' });
+  }
+};
+
+/**
+ * Lister les sprints d'un projet
+ * GET /api/projects/:id/sprints
+ */
+exports.getProjectSprints = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Vérifier que l'utilisateur a accès au projet (propriétaire ou membre)
+    const project = await Project.findOne({
+      where: { id },
+      include: [{ model: Client, as: 'client', attributes: ['ownerId'] }]
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Projet non trouvé' });
+    }
+
+    const isOwner = project.client && project.client.ownerId === userId;
+    const membership = await ProjectMember.findOne({ where: { projectId: id, userId } });
+    if (!isOwner && !membership) {
+      return res.status(403).json({ error: 'Accès non autorisé' });
+    }
+
+    const sprints = await Sprint.findAll({
+      where: { projectId: id },
+      order: [['createdAt', 'DESC']],
+      attributes: ['id', 'name', 'status', 'startDate', 'endDate']
+    });
+
+    res.json(sprints);
+  } catch (error) {
+    console.error('Erreur récupération sprints du projet:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des sprints' });
   }
 };
 

@@ -14,7 +14,7 @@ const Team = sequelize.define('Team', {
   },
   teamCode: {
     type: DataTypes.STRING(8),
-    allowNull: false,
+    allowNull: true,
     comment: 'Code unique pour rejoindre l\'équipe'
   },
   createdById: {

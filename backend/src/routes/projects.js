@@ -7,6 +7,7 @@ const statsController = require('../controllers/statsController');
 router.post('/', auth, projectController.createProject);
 router.get('/', auth, projectController.listProjects);
 router.get('/:id/stats', auth, statsController.getProjectStats);
+router.get('/:id/sprints', auth, projectController.getProjectSprints);
 router.get('/:id/members', auth, projectController.getProjectMembers);
 router.post('/:id/regenerate-code', auth, projectController.regenerateProjectCode);
 router.delete('/:id/members/:userId', auth, projectController.removeMember);

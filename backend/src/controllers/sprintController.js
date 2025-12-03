@@ -146,6 +146,52 @@ exports.getSprint = async (req, res) => {
 };
 
 /**
+ * Lister les issues d'un sprint
+ * GET /api/sprints/:id/issues
+ */
+exports.getSprintIssues = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const sprint = await Sprint.findOne({
+      where: { id },
+      include: [{
+        model: Project,
+        as: 'project',
+        include: [{ model: Client, as: 'client', attributes: ['ownerId'] }]
+      }]
+    });
+
+    if (!sprint) {
+      return res.status(404).json({ error: 'Sprint non trouvé' });
+    }
+
+    const isOwner = sprint.project && sprint.project.client && sprint.project.client.ownerId === userId;
+    const membership = await ProjectMember.findOne({ where: { projectId: sprint.project.id, userId } });
+    const isMember = !!membership;
+
+    if (!isOwner && !isMember) {
+      return res.status(403).json({ error: 'Accès non autorisé' });
+    }
+
+    const issues = await Issue.findAll({
+      where: { sprintId: id },
+      include: [
+        { model: User, as: 'assignee', attributes: ['id', 'name'] },
+        { model: User, as: 'creator', attributes: ['id', 'name'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(issues);
+  } catch (error) {
+    console.error('Erreur récupération issues du sprint:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des issues' });
+  }
+};
+
+/**
  * Mettre à jour un sprint
  * PATCH /api/sprints/:id
  */

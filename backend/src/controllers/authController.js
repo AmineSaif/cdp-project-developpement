@@ -5,7 +5,7 @@ dotenv.config();
 
 const User = require('../models/user');
 const Team = require('../models/team'); // legacy
-const { Client, Project, Sprint } = require('../models');
+const { Client, Project, Sprint, ProjectMember } = require('../models');
 const { generateUniqueProjectCode } = require('../utils/projectCodeGenerator');
 
 const jwtSecret = process.env.JWT_SECRET || 'changeme';
@@ -29,7 +29,6 @@ async function register(req, res) {
       const project = await Project.findOne({
         where: { projectCode: projectCode.toLowerCase() },
         include: [
-          { model: Team, as: 'team' },
           { model: Client, as: 'client' }
         ]
       });
@@ -40,6 +39,12 @@ async function register(req, res) {
       if (project.teamId) {
         await user.update({ teamId: project.teamId });
       }
+      // Ajouter l'utilisateur comme membre du projet
+      await ProjectMember.create({
+        projectId: project.id,
+        userId: user.id,
+        role: 'member'
+      });
       createdEntities.joinedProjectId = project.id;
     } else {
       // Création d'un nouveau client + projet + sprint initial
